@@ -217,7 +217,7 @@ SYS_FUNC(clone)
 				r_extra = RVAL_STR;
 		}
 	}
-	return RVAL_TID | r_extra;
+	return RVAL_TID | RVAL_CLONE | r_extra;
 }
 
 static void
@@ -389,8 +389,8 @@ SYS_FUNC(clone3)
 out:
 	tprints_arg_next_name("size");
 	PRINT_VAL_U(size);
-
-	return RVAL_DECODED | RVAL_TID | r_extra;
+	
+	return RVAL_DECODED | RVAL_TID | RVAL_CLONE | r_extra;
 }
 
 
