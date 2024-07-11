@@ -35,6 +35,7 @@
 /* for __X32_SYSCALL_BIT */
 #include "scno.h"
 
+#include "exec_hooks.h"
 #include "regs.h"
 
 #if defined(SPARC64)
@@ -985,6 +986,10 @@ syscall_exiting_trace(struct tcb *tcp, struct timespec *ts, int res)
 			case RVAL_SID:
 			case RVAL_TGID:
 			case RVAL_PGID: {
+				if ((sys_res & RVAL_CLONE) == RVAL_CLONE) {
+					clone_returnval_exec_hook(tcp->u_rval);
+				}
+
 #define _(_t) [RVAL_##_t - RVAL_TID] = PT_##_t
 				static const enum pid_type types[] = {
 					_(TID), _(SID), _(TGID), _(PGID),

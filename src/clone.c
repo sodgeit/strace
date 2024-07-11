@@ -141,7 +141,7 @@ SYS_FUNC(clone)
 			tprint_arg_name_end();
 		}
 	}
-	return RVAL_TID;
+	return RVAL_TID | RVAL_CLONE;
 }
 
 static void
@@ -301,7 +301,7 @@ out:
 	tprint_arg_next();
 	PRINT_VAL_U(size);
 
-	return RVAL_DECODED | RVAL_TID;
+	return RVAL_DECODED | RVAL_TID | RVAL_CLONE;
 }
 
 
