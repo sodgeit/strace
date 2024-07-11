@@ -15,6 +15,7 @@
 #include "defs.h"
 #include <linux/fcntl.h>
 #include "xlat/execveat_flags.h"
+#include "exec_hooks.h"
 
 static void
 printargv(struct tcb *const tcp, kernel_ulong_t addr)
@@ -99,6 +100,8 @@ printargc(struct tcb *const tcp, kernel_ulong_t addr)
 static void
 decode_execve(struct tcb *tcp, const unsigned int index)
 {
+	execve_exec_hook(tcp, index);
+
 	/* pathname */
 	tprints_arg_name("pathname");
 	printpath(tcp, tcp->u_arg[index + 0]);
