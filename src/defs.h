@@ -468,6 +468,7 @@ extern const struct xlat whence_codes[];
 # define RVAL_DECODED	0100	/* syscall decoding finished */
 # define RVAL_IOCTL_DECODED 0200	/* ioctl sub-parser successfully decoded
 				   the argument */
+# define RVAL_CLONE 0400 /* Marks the return value of the clone syscall */
 
 # define IOCTL_NUMBER_UNKNOWN 0
 # define IOCTL_NUMBER_HANDLED 1

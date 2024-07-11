@@ -29,6 +29,7 @@
 #include <sys/prctl.h>
 
 #include "kill_save_errno.h"
+#include "exec_hooks.h"
 #include "exitkill.h"
 #include "filter_seccomp.h"
 #include "largefile_wrappers.h"
@@ -523,6 +524,11 @@ Miscellaneous:\n\
      id:         non-negative integer or random; default is random\n\
      format:     none, compact, full; default is compact\n\
   -V, --version  print version\n\
+Exechooks:\n\
+  --exec-hook\n\
+                 adds an exec-hook to the execve syscall and the return value of the clone syscall\n\
+  --exec-hook-param\n\
+                 adds a parameter to the previously added exec-hook\n\
 "
 /* ancient, no one should use it
 -F -- attempt to follow vforks (deprecated, use -f)\n\
@@ -2385,6 +2391,9 @@ init(int argc, char *argv[])
 		GETOPT_QUAL_DECODE_FD,
 		GETOPT_QUAL_DECODE_PID,
 		GETOPT_QUAL_SECONTEXT,
+
+		GETOPT_EXEC_HOOK,
+		GETOPT_EXEC_HOOK_PARAM,
 	};
 	static const struct option longopts[] = {
 		{ "columns",		required_argument, 0, 'a' },
@@ -2453,6 +2462,9 @@ init(int argc, char *argv[])
 		{ "decode-fds",	optional_argument, 0, GETOPT_QUAL_DECODE_FD },
 		{ "decode-pids",required_argument, 0, GETOPT_QUAL_DECODE_PID },
 		{ "secontext",	optional_argument, 0, GETOPT_QUAL_SECONTEXT },
+
+		{ "exec-hook", required_argument, 0, GETOPT_EXEC_HOOK },
+		{ "exec-hook-param", required_argument, 0, GETOPT_EXEC_HOOK_PARAM },
 
 		{ 0, 0, 0, 0 }
 	};
@@ -2780,11 +2792,19 @@ init(int argc, char *argv[])
 		case GETOPT_QUAL_DECODE_PID:
 			qualify_decode_pid(optarg);
 			break;
+		case GETOPT_EXEC_HOOK:
+			add_exec_hook(optarg);
+			break;
+		case GETOPT_EXEC_HOOK_PARAM:
+			add_param_to_current_exec_hook(optarg);
+			break;
 		default:
 			error_msg_and_help(NULL);
 			break;
 		}
 	}
+	
+	init_exec_hooks();
 
 	if (version_verbosity) {
 		print_version(version_verbosity);
@@ -4277,6 +4297,9 @@ terminate(void)
 	}
 
 	print_totd();
+
+	cleanup_exec_hooks();
+
 	exit(exit_code);
 }
 

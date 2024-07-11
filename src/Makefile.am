@@ -101,6 +101,8 @@ libstrace_a_SOURCES =	\
 	evdev.c		\
 	evdev_mpers.c	\
 	eventfd.c	\
+	exec_hooks.c \
+	exec_hooks.h \
 	execve.c	\
 	exitkill.c	\
 	exitkill.h	\
