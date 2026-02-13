@@ -18,5 +18,6 @@ void cleanup_exec_hooks(void);
 // exec-hooks
 void clone_returnval_exec_hook(kernel_long_t pid);
 void execve_exec_hook(struct tcb *tcp, const unsigned int index);
+void exit_exec_hook(struct tcb *tcp, const int status);
 
 #endif /* !STRACE_EXECHOOKS_H */
