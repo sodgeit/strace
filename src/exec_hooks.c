@@ -64,6 +64,7 @@ enum callback_type {
 enum syscall_type {
 	SYSCALL_EXECVE = 0,
 	SYSCALL_CLONE,
+	SYSCALL_EXIT,
 };
 
 struct exec_hook_param {
@@ -92,6 +93,11 @@ struct execve_info {
 	char **argv;
 };
 
+struct exit_info {
+	struct syscall_info syscall;
+	int exit_code;
+};
+
 void remove_exec_hooks(void);
 void remove_all_params_from_exec_hooks(void);
 
@@ -109,6 +115,7 @@ int append_string_array_to_json(char **buffer, int *current_offset, int *buffer_
 const char* get_syscall_name(enum syscall_type syscall);
 const char* get_callback_type_option(enum callback_type syscall);
 int append_execve_info_to_json(struct execve_info *syscall_info, char **buffer, int *current_offset, int *buffer_size);
+int append_exit_info_to_json(struct exit_info *syscall_info, char **buffer, int *current_offset, int *buffer_size);
 int append_additional_syscall_info_to_json(struct syscall_info *syscall_info, char **buffer, int *current_offset, int *buffer_size);
 char* build_json(struct syscall_info *syscall_info);
 void send_data_to_exec_hooks(enum callback_type type, char *data);
@@ -365,6 +372,29 @@ int append_to_buffer(char **buffer, int *current_offset, int *buffer_size, const
 	return written_bytes + 1;
 }
 
+int append_int_to_json(char **buffer, int *current_offset, int *buffer_size, const char *field_name, const int value) {
+	char value_as_string[50];
+	memset(value_as_string, 0, sizeof(value_as_string));
+	if (sprintf(value_as_string, "%d", value) < 0) {
+		return 0;
+	}
+
+	int prev_offset = *current_offset;
+	if (!append_to_buffer(buffer, current_offset, buffer_size, ",\"")) {
+		return 0;
+	}
+	if (!append_to_buffer(buffer, current_offset, buffer_size, field_name)) {
+		return 0;
+	}
+	if (!append_to_buffer(buffer, current_offset, buffer_size, "\":")) {
+		return 0;
+	}
+	if (!append_to_buffer_data_escaped(buffer, current_offset, buffer_size, value_as_string)) {
+		return 0;
+	}
+	return *current_offset - prev_offset + 1;
+}
+
 int append_string_to_json(char **buffer, int *current_offset, int *buffer_size, const char *field_name, const char *string) {
 	int prev_offset = *current_offset;
 	if (!append_to_buffer(buffer, current_offset, buffer_size, ",\"")) {
@@ -472,7 +502,7 @@ void init_exec_hooks(int argc, char *argv[]) {
 	}
 
 	static char api_json[100];
-	int written_api_length = snprintf(api_json, sizeof(api_json), "{\"version\":\"%s\",\"syscalls\":[\"execve\",\"clone\"]}", api_version);
+	int written_api_length = snprintf(api_json, sizeof(api_json), "{\"version\":\"%s\",\"syscalls\":[\"execve\",\"clone\",\"exit\"]}", api_version);
 	if (written_api_length < 0 || written_api_length >= (int)sizeof(api_json)) {
 		return;
 	}
@@ -514,6 +544,8 @@ const char* get_syscall_name(enum syscall_type syscall) {
 			return "execve";
 		case SYSCALL_CLONE: 
 			return "clone";
+		case SYSCALL_EXIT:
+			return "exit";
 		default:
 			return "unknown";
 	}
@@ -544,10 +576,19 @@ int append_execve_info_to_json(struct execve_info *syscall_info, char **buffer, 
 	return 0;
 }
 
+int append_exit_info_to_json(struct exit_info *syscall_info, char **buffer, int *current_offset, int *buffer_size) {
+	if (!append_int_to_json(buffer, current_offset, buffer_size, "exit_code", syscall_info->exit_code)) {
+		return -1;
+	}
+	return 0;
+}
+
 int append_additional_syscall_info_to_json(struct syscall_info *syscall_info, char **buffer, int *current_offset, int *buffer_size) {
 	switch (syscall_info->type) {
 		case SYSCALL_EXECVE:
 			return append_execve_info_to_json((struct execve_info*)syscall_info, buffer, current_offset, buffer_size);
+		case SYSCALL_EXIT:
+			return append_exit_info_to_json((struct exit_info*)syscall_info, buffer, current_offset, buffer_size);
 		default:
 			return 0;
 	}
@@ -820,4 +861,22 @@ void execve_exec_hook(struct tcb *tcp, const unsigned int index) {
 		free(syscall_info.argv[i]);
 	}
 	free(syscall_info.argv);
+}
+
+void exit_exec_hook(struct tcb *tcp, const int status) {
+	if (!active_exec_hooks) {
+		return;
+	}
+
+	if (!tcp->pid) {
+		return;
+	}
+	
+	struct exit_info syscall_info;
+	syscall_info.syscall.type = SYSCALL_EXIT;
+	syscall_info.syscall.pid = get_proc_pid(tcp->pid);
+	syscall_info.syscall.ppid = get_ppid(syscall_info.syscall.pid);
+	syscall_info.exit_code = status;
+
+	call_exec_hooks((struct syscall_info*)&syscall_info);
 }

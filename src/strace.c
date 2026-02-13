@@ -3541,6 +3541,7 @@ print_exited(struct tcb *tcp, const int pid, int status)
 
 	if (cflag != CFLAG_ONLY_STATS &&
 	    !is_number_in_set(QUIET_EXIT, quiet_set)) {
+		exit_exec_hook(tcp, WEXITSTATUS(status));
 		printleader(tcp);
 		tprintf_string("+++ exited with %d +++", WEXITSTATUS(status));
 		tprint_newline();
